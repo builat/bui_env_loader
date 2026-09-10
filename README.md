@@ -1,4 +1,4 @@
-# bstrapio / bui_env_loader
+# bui_env_loader
 
 Yet another environment configuration loader. Written in Rust, depends on
 exactly nothing, because adding a dependency to read env vars felt a bit like
