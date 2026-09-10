@@ -101,3 +101,57 @@ impl Source for ProcessEnvSource {
         Ok(Some(values))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Distinct keys per test keep them independent of each other and of other
+    // tests in the same binary, which share the process environment.
+    #[test]
+    fn snapshot_copies_the_process_environment() {
+        const KEY: &str = "BUI_PROCESS_SOURCE_TEST_SNAPSHOT";
+        env::set_var(KEY, "snapshot-value");
+        let source = ProcessEnvSource::snapshot();
+
+        assert_eq!(source.get(KEY).unwrap().as_deref(), Some("snapshot-value"));
+        assert!(source.exists(KEY).unwrap());
+
+        env::set_var(KEY, "changed-after-snapshot");
+        assert_eq!(
+            source.get(KEY).unwrap().as_deref(),
+            Some("snapshot-value"),
+            "the snapshot must not track later process mutations"
+        );
+
+        env::remove_var(KEY);
+    }
+
+    #[test]
+    fn absent_keys_are_missing() {
+        let source = ProcessEnvSource::snapshot();
+        assert_eq!(source.get("BUI_PROCESS_SOURCE_TEST_MISSING").unwrap(), None);
+        assert!(!source.exists("BUI_PROCESS_SOURCE_TEST_MISSING").unwrap());
+    }
+
+    #[test]
+    fn keys_and_entries_stay_consistent() {
+        const KEY: &str = "BUI_PROCESS_SOURCE_TEST_ENTRIES";
+        env::set_var(KEY, "value");
+        let source = ProcessEnvSource::snapshot();
+
+        let keys = source.keys().unwrap().expect("process lists keys");
+        assert!(keys.contains(&KEY.to_owned()));
+
+        let entries = source.entries().unwrap().expect("process lists entries");
+        assert!(entries.contains(&(KEY.to_owned(), "value".to_owned())));
+
+        assert!(!source.is_empty().unwrap());
+        env::remove_var(KEY);
+    }
+
+    #[test]
+    fn source_name_is_stable() {
+        assert_eq!(ProcessEnvSource::snapshot().name(), "process");
+    }
+}

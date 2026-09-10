@@ -238,7 +238,8 @@ fn dotenv_line_error(source_name: &str, line_number: usize, message: &str) -> Co
 
 #[cfg(test)]
 mod tests {
-    use super::parse;
+    use super::{is_valid_key, parse, ParsedDotenv};
+    use std::path::Path;
 
     #[test]
     fn parses_supported_dotenv_syntax() {
@@ -271,5 +272,85 @@ mod tests {
 
         assert_eq!(values["PORT"], "8080");
         assert_eq!(duplicates, vec!["PORT"]);
+    }
+
+    #[test]
+    fn rejects_lines_without_an_equals_sign() {
+        let error = parse("JUST_A_KEY\n", "test.env").unwrap_err();
+        assert_eq!(error.kind(), crate::ConfigErrorKind::DotenvSyntax);
+        assert!(error.message().contains("line 1"));
+    }
+
+    #[test]
+    fn rejects_invalid_key_names() {
+        let error = parse("1BAD=oops\n", "test.env").unwrap_err();
+        assert!(error.message().contains("Invalid environment variable name"));
+
+        let error = parse("BAD-KEY=oops\n", "test.env").unwrap_err();
+        assert!(error.message().contains("Invalid environment variable name"));
+    }
+
+    #[test]
+    fn rejects_unterminated_quotes() {
+        for input in ["KEY=\"open", "KEY='open", "KEY=\"trailing\\"] {
+            let error = parse(input, "test.env").unwrap_err();
+            assert!(error.message().contains("Unterminated"), "{input}");
+        }
+    }
+
+    #[test]
+    fn rejects_garbage_after_quoted_values() {
+        let error = parse("KEY=\"value\" junk\n", "test.env").unwrap_err();
+        assert!(error.message().contains("Unexpected characters"));
+    }
+
+    #[test]
+    fn allows_comments_after_quoted_values() {
+        let (values, _) = parse("KEY=\"value\" # comment\n", "test.env").unwrap();
+        assert_eq!(values["KEY"], "value");
+    }
+
+    #[test]
+    fn decodes_common_escapes_only_in_double_quotes() {
+        let (values, _) = parse(
+            "DQ=\"a\\tb\\nc\\\\d\\\"e\"\nSQ='a\\tb'\n",
+            "test.env",
+        )
+        .unwrap();
+
+        assert_eq!(values["DQ"], "a\tb\nc\\d\"e");
+        // Single quotes are literal: the escape sequence survives verbatim.
+        assert_eq!(values["SQ"], "a\\tb");
+    }
+
+    #[test]
+    fn export_without_whitespace_is_a_normal_key() {
+        let (values, _) = parse("exported=value\n", "test.env").unwrap();
+        assert_eq!(values["exported"], "value");
+    }
+
+    #[test]
+    fn trailing_whitespace_and_inline_comments_are_trimmed() {
+        let (values, _) = parse("KEY=value   \nTABS=\tvalue\t\n", "test.env").unwrap();
+
+        assert_eq!(values["KEY"], "value");
+        assert_eq!(values["TABS"], "value");
+    }
+
+    #[test]
+    fn key_validation_rules() {
+        assert!(is_valid_key("A"));
+        assert!(is_valid_key("_private_1"));
+        assert!(is_valid_key("lower_case"));
+        assert!(!is_valid_key(""));
+        assert!(!is_valid_key("1ABC"));
+        assert!(!is_valid_key("BAD-KEY"));
+        assert!(!is_valid_key("BAD KEY"));
+    }
+
+    #[test]
+    fn from_path_reports_io_errors_for_missing_files() {
+        let error = ParsedDotenv::from_path(Path::new("tests/.env.definitely_missing")).unwrap_err();
+        assert_eq!(error.kind(), crate::ConfigErrorKind::Io);
     }
 }

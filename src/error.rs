@@ -214,3 +214,66 @@ impl Display for SourceError {
 }
 
 impl Error for SourceError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accessors_expose_error_context() {
+        let error = ConfigError::invalid_value("APP_PORT", "u16", "invalid digit found in string");
+
+        assert_eq!(error.kind(), ConfigErrorKind::InvalidValue);
+        assert_eq!(error.key(), Some("APP_PORT"));
+        assert_eq!(error.source_name(), None);
+        assert_eq!(error.expected_type(), Some("u16"));
+        assert!(error.message().contains("parse"));
+    }
+
+    #[test]
+    fn display_includes_key_source_and_expected_type() {
+        let error = ConfigError::invalid_value("APP_PORT", "u16", "oops");
+        let text = error.to_string();
+
+        assert!(text.contains("InvalidValue"));
+        assert!(text.contains("`APP_PORT`"));
+        assert!(text.contains("`u16`"));
+        assert!(text.contains("oops"));
+    }
+
+    #[test]
+    fn display_omits_absent_context() {
+        let error = ConfigError::internal("boom");
+        let text = error.to_string();
+
+        assert!(!text.contains(" for `"));
+        assert!(!text.contains(" in `"));
+        assert!(!text.contains("expected"));
+        assert!(text.ends_with("boom"));
+    }
+
+    #[test]
+    fn safe_log_messages_never_leak_values() {
+        let secret_reason = "secret-token";
+        let error = ConfigError::invalid_value("APP_TOKEN", "String", secret_reason);
+
+        assert!(!error.safe_log_message().contains(secret_reason));
+    }
+
+    #[test]
+    fn computation_error_is_publicly_constructible() {
+        let error = ConfigError::computation("public_url", "division by zero");
+
+        assert_eq!(error.kind(), ConfigErrorKind::Computation);
+        assert_eq!(error.key(), Some("public_url"));
+        assert_eq!(error.source_name(), None);
+        assert_eq!(error.expected_type(), None);
+    }
+
+    #[test]
+    fn source_error_displays_its_message() {
+        let error = SourceError::new("SNAFU disk on fire");
+        assert_eq!(error.message(), "SNAFU disk on fire");
+        assert_eq!(error.to_string(), "SNAFU disk on fire");
+    }
+}
