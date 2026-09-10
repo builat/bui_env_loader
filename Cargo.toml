@@ -3,9 +3,14 @@ name = "bui_env_loader"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.98.0"
-description = "A dependency-free, strongly typed yet another configuration loader"
+description = "A dependency-free, strongly typed configuration loader for environment variables, dotenv files and custom sources"
 license = "MIT"
-publish = false
+readme = "README.md"
+repository = "https://github.com/builat/bui_env_loader"
+homepage = "https://github.com/builat/bui_env_loader"
+documentation = "https://docs.rs/bui_env_loader"
+keywords = ["config", "configuration", "environment", "dotenv", "env"]
+categories = ["config"]
 
 [lib]
 name = "bui_env_loader"
@@ -14,4 +19,3 @@ path = "src/lib.rs"
 # The empty section is intentional: the project uses only Rust's standard
 # library. Keeping it visible makes that design constraint easy to audit.
 [dependencies]
-

@@ -51,11 +51,12 @@ and get strongly typed values back. Long version below, unfortunatelly.
 
 ```toml
 [dependencies]
-bui_env_loader = "0.1.0"
+bui_env_loader = "0.1"
 ```
 
-(The crate is `publish = false` for now, so honestly this section is more of a
-future plan than an instruction.)
+Std-only, so this adds exactly one crate to your tree and zero to your
+dependency graph. Depending on your feelings about transitive dependencies,
+this is either nice or very nice.
 
 ## How to use
 
