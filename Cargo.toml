@@ -1,0 +1,17 @@
+[package]
+name = "bui_env_loader"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.98.0"
+description = "A dependency-free, strongly typed yet another configuration loader"
+license = "MIT"
+publish = false
+
+[lib]
+name = "bui_env_loader"
+path = "src/lib.rs"
+
+# The empty section is intentional: the project uses only Rust's standard
+# library. Keeping it visible makes that design constraint easy to audit.
+[dependencies]
+
